@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>澳门六合彩 · 轮转策略</title>
+<script src="chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}
+h1{text-align:center;font-size:1.4rem;margin-bottom:4px;color:#fbbf24}
+h2{font-size:1.05rem;color:#f8fafc;margin:24px 0 12px;padding-bottom:6px;border-bottom:2px solid #fbbf24}
+.subtitle{text-align:center;color:#94a3b8;font-size:.8rem;margin-bottom:14px}
+.warning{background:#7f1d1d;border:1px solid #991b1b;border-radius:10px;padding:10px 18px;margin-bottom:16px;text-align:center;font-size:.82rem;color:#fca5a5}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:900px){.cols,.cols3{grid-template-columns:1fr}}
+.card{background:#1e293b;border-radius:12px;padding:14px;border:1px solid #334155}
+.card h3{font-size:.85rem;color:#f8fafc;margin-bottom:8px}
+.card canvas{max-height:280px}
+.pick-row{display:flex;gap:14px;margin:14px 0;flex-wrap:wrap}
+.pick-box{flex:1;min-width:280px;background:linear-gradient(135deg,#1e293b,#1e3a5f);border-radius:14px;padding:18px;border:2px solid #fbbf24;text-align:center}
+.pick-box h4{font-size:.88rem;margin-bottom:4px}
+.pick-box .label{font-size:.68rem;color:#94a3b8;margin-bottom:10px}
+.balls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.ball{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;color:#fff;box-shadow:0 3px 12px rgba(0,0,0,.3)}
+.ball.w1{background:linear-gradient(135deg,#f87171,#dc2626)}
+.ball.w2{background:linear-gradient(135deg,#fb923c,#ea580c)}
+.ball.w3{background:linear-gradient(135deg,#fbbf24,#d97706)}
+.ball.w4{background:linear-gradient(135deg,#34d399,#16a34a)}
+.ball.w5{background:linear-gradient(135deg,#60a5fa,#2563eb)}
+.ball.w6{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
+.ball.spec{background:linear-gradient(135deg,#3b82f6,#1d4ed8);width:48px;height:48px;font-size:1.15rem;position:relative}
+.ball.spec::after{content:'特';position:absolute;top:-8px;right:-8px;background:#fbbf24;color:#000;font-size:.55rem;padding:1px 5px;border-radius:5px;font-weight:700}
+.pos-tag{font-size:.5rem;color:#94a3b8;display:block;margin-top:2px}
+table{width:100%;font-size:.74rem;border-collapse:collapse}
+th{color:#94a3b8;text-align:left;padding:4px 6px;border-bottom:1px solid #334155;font-weight:400;white-space:nowrap}
+td{padding:4px 6px;border-bottom:1px solid #1e293b;white-space:nowrap}
+tr:hover{background:#1e293b}
+.rank{color:#fbbf24;font-weight:700;width:20px}
+.num-cell{font-weight:700;font-size:.82rem}
+.score-cell{font-weight:700;color:#fbbf24}
+.bar{height:5px;border-radius:2px;display:inline-block;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<h1>🎲 澳门六合彩 · 2026217期预测 · 三策略对比</h1>
+<p class="subtitle">1,677期 | 预测2026217期 | 每期覆盖率: 综合67.6% 轮转65.8% 并集88.3% | 111期回测 | 纯统计</p>
+<div class="warning">⚠️ 独立随机事件。仅对已发生数据执行统计运算，不构成任何结果保证。</div>
+
+<h2>🏆 三策略对比</h2>
+<div class="pick-row">
+<div class="pick-box" style="border-color:#60a5fa">
+  <h4>📊 综合Top6 (优化前)</h4>
+  <div class="label">频14%+漏29%+动24%+加18%+位15% | 覆盖67.6%</div>
+  <div class="balls" id="flatBallsOld"></div>
+</div>
+<div class="pick-box">
+  <h4>🔄 动量Top6 (最优)</h4>
+  <div class="label">频15%+漏15%+动45%+轮5%+位10%+加10% | 覆盖65.8%</div>
+  <div class="balls" id="flatBalls"></div>
+</div>
+<div class="pick-box" style="border-color:#34d399;background:linear-gradient(135deg,#1e293b,#064e3b)">
+  <h4>🔥 并集Top10 (推荐)</h4>
+  <div class="label">综合∪轮转 去重排序 | 覆盖88.3% | 均1.15个/期</div>
+  <div class="balls" id="unionBalls"></div>
+</div>
+</div>
+
+<h2>🔵 特码对比</h2>
+<div class="pick-row">
+<div class="pick-box" style="border-color:#60a5fa">
+  <h4>📊 综合特码Top6</h4>
+  <div class="label">频30%+漏50%+近20%</div>
+  <div class="balls" id="specBallsOld"></div>
+</div>
+<div class="pick-box" style="border-color:#3b82f6">
+  <h4>🔄 轮转特码Top6</h4>
+  <div class="label">频30%+漏50%+近20% (旧综合·多样性优先)</div>
+  <div class="balls" id="specBalls"></div>
+</div>
+<div class="pick-box" style="border-color:#34d399;background:linear-gradient(135deg,#1e293b,#064e3b)">
+  <h4>🔥 并集特码Top6</h4>
+  <div class="label">综合∪轮转 去重排序</div>
+  <div class="balls" id="unionSpecBalls"></div>
+</div>
+<div class="pick-box" style="border-color:#f59e0b;background:linear-gradient(135deg,#1e293b,#451a03)">
+  <h4>🎯 集成特码Top8</h4>
+  <div class="label">Cold+HOT+Rot 三策略各取Top3去重</div>
+  <div class="balls" id="ensembleSpecBalls"></div>
+</div>
+</div>
+
+<h2>📊 轮转模型评分</h2>
+<div class="cols">
+<div class="card"><h3>平码 TOP 20</h3><canvas id="chartCR"></canvas></div>
+<div class="card"><h3>特码 TOP 15</h3><canvas id="chartSpec"></canvas></div>
+</div>
+<div class="cols" style="margin-top:12px">
+<div class="card"><h3>📋 平码 TOP 15 明细</h3><table id="tblCR"></table></div>
+<div class="card"><h3>📋 特码 TOP 15 明细</h3><table id="tblSpec"></table></div>
+</div>
+
+<h2>🐉 十二生肖预测</h2>
+<div class="card">
+  <h3>特码生肖热度排行</h3>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px" id="zodiacGrid"></div>
+</div>
+
+<h2>📈 三策略回测对比</h2>
+<div class="cols">
+<div class="card"><h3>各时段命中率对比</h3><canvas id="chartBacktest"></canvas></div>
+<div class="card"><h3>命中分布 (111期·轮转)</h3><canvas id="chartDist"></canvas></div>
+</div>
+<div class="card" style="margin-top:12px">
+  <h3>📋 回测数据</h3>
+  <table>
+    <tr><th>时段</th><th>期数</th><th>综合Top6</th><th>轮转Top6</th><th>🔥并集Top10</th></tr>
+    <tr><td>1-37</td><td>37</td><td>62.2%</td><td>56.8%</td><td class="score-cell">81.1%</td></tr>
+    <tr><td>38-74</td><td>37</td><td>64.9%</td><td>67.6%</td><td class="score-cell">94.6%</td></tr>
+    <tr><td>75-111</td><td>37</td><td>75.7%</td><td>73.0%</td><td class="score-cell">89.2%</td></tr>
+    <tr><td class="score-cell">前向(14期)</td><td class="score-cell">14</td><td class="score-cell">71.4%</td><td class="score-cell">71.4%</td><td class="score-cell" style="color:#34d399">85.7%</td></tr>
+  </table>
+</div>
+
+<h2>🔵 特码命中率对比</h2>
+<div class="cols">
+<div class="card"><h3>特码 Top6 各时段命中率</h3><canvas id="chartSpecHit"></canvas></div>
+<div class="card">
+  <h3>📋 特码命中数据</h3>
+  <table>
+    <tr><th>时段</th><th>综合</th><th>轮转</th><th>🔥并集</th></tr>
+    <tr><td>1-37</td><td>16.2%</td><td>16.2%</td><td class="score-cell">16.2%</td></tr>
+    <tr><td>38-74</td><td>21.6%</td><td>21.6%</td><td class="score-cell">21.6%</td></tr>
+    <tr><td>75-111</td><td>10.8%</td><td>10.8%</td><td class="score-cell">10.8%</td></tr>
+    <tr><td class="score-cell">前向</td><td class="score-cell">21.4%</td><td class="score-cell">21.4%</td><td class="score-cell" style="color:#34d399">21.4%</td></tr>
+  </table>
+</div>
+</div>
+
+<h2>📍 各位置独立评分</h2>
+<div class="cols3" id="posGrid"></div>
+
+<h2>🔄 轮转信号</h2>
+<div class="cols">
+<div class="card"><h3>TOP 8 轮转信号</h3><canvas id="chartCRR"></canvas></div>
+<div class="card">
+  <h3>📋 轮转信号说明</h3>
+  <div style="font-size:.78rem;color:#94a3b8;line-height:1.8;margin-top:8px">
+    <p>轮转信号 = (近50期平码次数 / 3) × (特码距上次期数 / 特码平均间隔)</p>
+    <p style="margin-top:8px">💡 捕捉<b>「平码活跃但特码长期沉寂」</b>的号码</p>
+    <p>📊 模型权重: 轮转信号 <b>30%</b> (最大单项)</p>
+  </div>
+</div>
+</div>
+
+<script>
+var l6=["19", "38", "12", "37", "45", "30"];var sp6=["38", "20", "34", "17", "12", "46"];
+var l6o=["19", "37", "12", "38", "45", "39"];var sp6o=["38", "20", "34", "17", "12", "46"];
+var un10=["19", "38", "12", "37", "45", "30", "39", "11", "48", "40"];var uns6=["38", "20", "34", "17", "12", "46"];var ens8=["38", "46", "20", "34", "12", "17"];
+var zodData=[{"name": "\u9f20", "count": 129, "miss": 72, "top": "43"}, {"name": "\u725b", "count": 152, "miss": 81, "top": "30"}, {"name": "\u864e", "count": 137, "miss": 118, "top": "17"}, {"name": "\u5154", "count": 149, "miss": 45, "top": "28"}, {"name": "\u9f99", "count": 136, "miss": 67, "top": "27"}, {"name": "\u86c7", "count": 132, "miss": 164, "top": "38"}, {"name": "\u9a6c", "count": 178, "miss": 69, "top": "13"}, {"name": "\u7f8a", "count": 131, "miss": 117, "top": "12"}, {"name": "\u7334", "count": 130, "miss": 97, "top": "11"}, {"name": "\u9e21", "count": 130, "miss": 143, "top": "34"}, {"name": "\u72d7", "count": 131, "miss": 75, "top": "45"}, {"name": "\u732a", "count": 142, "miss": 114, "top": "20"}];
+var crData=[{"n": "19", "s": 70.6, "mis": 1, "r30": 9, "acc": 100, "cr": 5.3}, {"n": "38", "s": 70.1, "mis": 1, "r30": 8, "acc": 100, "cr": 100.0}, {"n": "12", "s": 68.6, "mis": 3, "r30": 8, "acc": 100, "cr": 53.5}, {"n": "37", "s": 65.9, "mis": 5, "r30": 8, "acc": 100, "cr": 0.0}, {"n": "45", "s": 60.7, "mis": 0, "r30": 7, "acc": 90.2, "cr": 29.3}, {"n": "30", "s": 55.7, "mis": 1, "r30": 6, "acc": 74.2, "cr": 45.3}, {"n": "39", "s": 54.0, "mis": 4, "r30": 6, "acc": 84.3, "cr": 7.3}, {"n": "11", "s": 49.1, "mis": 1, "r30": 5, "acc": 65.3, "cr": 44.4}, {"n": "48", "s": 49.0, "mis": 6, "r30": 5, "acc": 67.2, "cr": 17.3}, {"n": "40", "s": 48.7, "mis": 6, "r30": 5, "acc": 65.6, "cr": 7.1}, {"n": "43", "s": 48.2, "mis": 2, "r30": 5, "acc": 64.1, "cr": 18.3}, {"n": "44", "s": 47.9, "mis": 0, "r30": 5, "acc": 62.4, "cr": 20.1}, {"n": "05", "s": 47.7, "mis": 3, "r30": 5, "acc": 64.4, "cr": 4.9}, {"n": "46", "s": 46.4, "mis": 15, "r30": 4, "acc": 54.0, "cr": 37.8}, {"n": "17", "s": 44.2, "mis": 6, "r30": 4, "acc": 52.2, "cr": 42.0}, {"n": "22", "s": 43.1, "mis": 3, "r30": 4, "acc": 51.3, "cr": 35.6}, {"n": "23", "s": 42.8, "mis": 8, "r30": 4, "acc": 54.8, "cr": 10.7}, {"n": "28", "s": 42.6, "mis": 8, "r30": 4, "acc": 57.9, "cr": 16.0}, {"n": "15", "s": 42.2, "mis": 3, "r30": 4, "acc": 49.5, "cr": 11.0}, {"n": "35", "s": 41.8, "mis": 8, "r30": 4, "acc": 58.8, "cr": 0.8}];var specData=[{"n": "38", "s": 66.5, "fq": 55.1, "ms": 164, "rc": 0, "cr": 100.0, "z": "\u86c7"}, {"n": "20", "s": 57.4, "fq": 75.5, "ms": 114, "rc": 0, "cr": 17.4, "z": "\u732a"}, {"n": "34", "s": 57.1, "fq": 44.9, "ms": 143, "rc": 0, "cr": 36.3, "z": "\u9e21"}, {"n": "17", "s": 55.6, "fq": 65.3, "ms": 118, "rc": 0, "cr": 42.0, "z": "\u864e"}, {"n": "12", "s": 53.4, "fq": 59.2, "ms": 117, "rc": 0, "cr": 53.5, "z": "\u7f8a"}, {"n": "46", "s": 52.8, "fq": 81.6, "ms": 93, "rc": 0, "cr": 37.8, "z": "\u9e21"}, {"n": "11", "s": 49.2, "fq": 65.3, "ms": 97, "rc": 0, "cr": 44.4, "z": "\u7334"}, {"n": "22", "s": 47.6, "fq": 57.1, "ms": 100, "rc": 0, "cr": 35.6, "z": "\u9e21"}, {"n": "30", "s": 46.1, "fq": 71.4, "ms": 81, "rc": 0, "cr": 45.3, "z": "\u725b"}, {"n": "48", "s": 42.8, "fq": 73.5, "ms": 68, "rc": 0, "cr": 17.3, "z": "\u7f8a"}, {"n": "42", "s": 42.2, "fq": 69.4, "ms": 70, "rc": 0, "cr": 17.8, "z": "\u725b"}, {"n": "13", "s": 41.2, "fq": 67.3, "ms": 69, "rc": 0, "cr": 21.0, "z": "\u9a6c"}, {"n": "43", "s": 40.9, "fq": 63.3, "ms": 72, "rc": 0, "cr": 18.3, "z": "\u9f20"}, {"n": "02", "s": 39.1, "fq": 73.5, "ms": 56, "rc": 0, "cr": 8.5, "z": "\u86c7"}, {"n": "45", "s": 39.1, "fq": 65.3, "ms": 64, "rc": 0, "cr": 29.3, "z": "\u72d7"}];
+var crrData=[{"n": "38", "c": 100.0, "p50": 12}, {"n": "12", "c": 53.5, "p50": 9}, {"n": "30", "c": 45.3, "p50": 11}, {"n": "11", "c": 44.4, "p50": 9}, {"n": "17", "c": 42.0, "p50": 7}, {"n": "46", "c": 37.8, "p50": 8}, {"n": "34", "c": 36.3, "p50": 5}, {"n": "22", "c": 35.6, "p50": 7}];var posTop={"1": [{"n": "15", "s": 45}, {"n": "24", "s": 44}, {"n": "45", "s": 44}], "2": [{"n": "07", "s": 45}, {"n": "37", "s": 44}, {"n": "04", "s": 42}], "3": [{"n": "29", "s": 57}, {"n": "10", "s": 48}, {"n": "09", "s": 44}], "4": [{"n": "01", "s": 46}, {"n": "34", "s": 46}, {"n": "33", "s": 44}], "5": [{"n": "37", "s": 46}, {"n": "15", "s": 44}, {"n": "49", "s": 43}], "6": [{"n": "11", "s": 47}, {"n": "04", "s": 44}, {"n": "16", "s": 42}]};
+var backtestData={"labels": ["1-37", "38-74", "75-111", "\u524d\u5411(14\u671f)"], "zh": [62.2, 64.9, 75.7, 71.4], "lz": [56.8, 67.6, 73.0, 71.4], "un": [81.1, 94.6, 89.2, 85.7], "dist": [38, 60, 8, 5]};
+var specBtData={"labels": ["1-37", "38-74", "75-111", "\u524d\u5411(14\u671f)"], "zh": [16.2, 21.6, 10.8, 21.4], "lz": [16.2, 21.6, 10.8, 21.4], "un": [16.2, 21.6, 10.8, 21.4]};
+
+function renderBalls(el, nums, cls) {
+  var wc=['w1','w2','w3','w4','w5','w6'];
+  var h='';
+  for(var i=0;i<nums.length;i++){
+    h+='<span class="ball '+(cls||wc[i%6])+'">'+nums[i]+'</span>';
+  }
+  document.getElementById(el).innerHTML=h;
+}
+function renderSpecBalls(el, nums) {
+  var h='';
+  for(var i=0;i<nums.length;i++){
+    var sz=[48,44,40,38,36,34][i];
+    h+='<span class="ball spec" style="width:'+sz+'px;height:'+sz+'px;font-size:'+(1.1-i*0.06)+'rem">'+nums[i]+'</span>';
+  }
+  document.getElementById(el).innerHTML=h;
+}
+
+renderBalls('flatBallsOld', l6o);
+renderBalls('flatBalls', l6);
+renderBalls('unionBalls', un10);
+renderSpecBalls('specBallsOld', sp6o);
+renderSpecBalls('specBalls', sp6);
+renderSpecBalls('unionSpecBalls', uns6);
+renderSpecBalls('ensembleSpecBalls', ens8);
+
+// Position grid
+var pg='';
+for(var p=1;p<=6;p++){var t=posTop[p];pg+='<div class="card" style="background:#0f172a"><h3>平码第'+p+'位</h3><div class="balls" style="justify-content:center;gap:5px">';for(var i=0;i<3;i++)pg+='<span class="ball" style="width:34px;height:34px;font-size:.8rem;'+(i===0?'background:linear-gradient(135deg,#fbbf24,#d97706)':'')+'">'+t[i].n+'<small style="font-size:.45rem;display:block">'+t[i].s+'分</small></span>';pg+='</div></div>'}
+document.getElementById('posGrid').innerHTML=pg;
+
+// Charts
+var TC='#94a3b8',DG='#334155',bd=backtestData;
+new Chart(document.getElementById('chartCR'),{type:'bar',data:{labels:crData.map(function(d){return d.n}),datasets:[{data:crData.map(function(d){return d.s}),backgroundColor:crData.map(function(d,i){return i<6?'#fbbf24':i<10?'#60a5fa':'#475569'}),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TC,font:{size:9}},grid:{color:DG}},y:{ticks:{color:TC},grid:{color:DG},title:{display:true,text:'轮转评分',color:TC}}}}});
+new Chart(document.getElementById('chartSpec'),{type:'bar',data:{labels:specData.map(function(d){return d.n}),datasets:[{data:specData.map(function(d){return d.s}),backgroundColor:specData.map(function(d,i){return i<3?'#3b82f6':i<6?'#60a5fa':'#475569'}),borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TC,font:{size:9}},grid:{color:DG}},y:{ticks:{color:TC},grid:{color:DG}}}}});
+new Chart(document.getElementById('chartBacktest'),{type:'bar',data:{labels:bd.labels,datasets:[{label:'综合Top6',data:bd.zh,backgroundColor:'#60a5fa',borderRadius:4},{label:'轮转Top6',data:bd.lz,backgroundColor:'#fbbf24',borderRadius:4},{label:'🔥并集Top10',data:bd.un,backgroundColor:'#34d399',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top',labels:{color:TC,font:{size:9}}},title:{display:true,text:'每期至少命中1个的覆盖率 (%)',color:TC,font:{size:10}}},scales:{x:{ticks:{color:TC}},y:{ticks:{color:TC,callback:function(v){return v+'%'}},grid:{color:DG},max:100}}}});
+new Chart(document.getElementById('chartDist'),{type:'bar',data:{labels:['0/6','1/6','2/6','3/6'],datasets:[{data:bd.dist,backgroundColor:['#f87171','#fb923c','#fbbf24','#34d399'],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TC}},y:{ticks:{color:TC},grid:{color:DG}}}}});
+new Chart(document.getElementById('chartCRR'),{type:'bar',data:{labels:crrData.map(function(d){return d.n}),datasets:[{label:'轮转信号',data:crrData.map(function(d){return d.c}),backgroundColor:'#fde68a',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TC}},y:{ticks:{color:TC},grid:{color:DG}}}}});
+
+// Special number hit rate chart
+var sd=specBtData;
+new Chart(document.getElementById('chartSpecHit'),{type:'bar',data:{labels:sd.labels,datasets:[{label:'综合特码',data:sd.zh,backgroundColor:'#60a5fa',borderRadius:4},{label:'轮转特码',data:sd.lz,backgroundColor:'#fbbf24',borderRadius:4},{label:'🔥并集特码',data:sd.un,backgroundColor:'#34d399',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top',labels:{color:TC,font:{size:9}}},title:{display:true,text:'特码Top6命中率 (%)',color:TC,font:{size:10}}},scales:{x:{ticks:{color:TC}},y:{ticks:{color:TC,callback:function(v){return v+'%'}},grid:{color:DG},max:100}}}});
+
+// Tables
+var ct='<tr><th>#</th><th>号</th><th>评分</th><th>遗漏</th><th>近30</th><th>加速</th><th>轮转信号</th></tr>';
+for(var i=0;i<15;i++){var d=crData[i];ct+='<tr><td class="rank">'+(i+1)+'</td><td class="num-cell">'+d.n+'</td><td class="score-cell">'+d.s.toFixed(1)+'</td><td>'+d.mis+'期</td><td>'+d.r30+'次</td><td>'+d.acc.toFixed(0)+'</td><td><span class="bar" style="width:'+(d.cr/100*45)+'px;background:#fde68a"></span>'+d.cr.toFixed(0)+'</td></tr>'}
+document.getElementById('tblCR').innerHTML=ct;
+
+var st='<tr><th>#</th><th>号</th><th>生肖</th><th>评分</th><th>频次</th><th>遗漏</th><th>轮转</th></tr>';
+for(var i=0;i<15;i++){var d=specData[i];st+='<tr><td class="rank">'+(i+1)+'</td><td class="num-cell">'+d.n+'</td><td>'+d.z+'</td><td class="score-cell">'+d.s.toFixed(1)+'</td><td>'+d.fq.toFixed(0)+'</td><td>'+d.ms.toFixed(0)+'</td><td>'+d.cr.toFixed(0)+'</td></tr>'}
+document.getElementById('tblSpec').innerHTML=st;
+
+// Zodiac grid
+var zg='';
+var maxCount=Math.max.apply(null,zodData.map(function(d){return d.count}));
+for(var i=0;i<zodData.length;i++){
+  var d=zodData[i];
+  var pct=(d.count/maxCount*100).toFixed(0);
+  zg+='<div style="background:#1e293b;border-radius:8px;padding:8px;text-align:center;border:1px solid #334155">';
+  zg+='<div style="font-size:1.2rem;font-weight:700;color:#fbbf24">'+d.name+'</div>';
+  zg+='<div style="font-size:.65rem;color:#94a3b8">特码'+d.count+'次 | 最长漏'+d.miss+'期</div>';
+  zg+='<div style="font-size:.7rem;color:#34d399;margin-top:2px">推荐: '+d.top+'</div>';
+  zg+='<div style="height:4px;background:#334155;border-radius:2px;margin-top:4px"><div style="height:4px;width:'+pct+'%;background:#fbbf24;border-radius:2px"></div></div>';
+  zg+='</div>';
+}
+document.getElementById('zodiacGrid').innerHTML=zg;
+</script>
+</body>
+</html>
